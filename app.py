@@ -12,7 +12,6 @@ Features:
 """
 
 import io
-import sys
 import contextlib
 
 import streamlit as st
@@ -36,17 +35,14 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------------
-# Title & intro
+# Project header and intro
 # ---------------------------------------------------------------------------
+st.title("⚖️ VerdictAI")
+st.subheader("A fairer, clearer way to resolve ride disputes")
 st.markdown(
-    "<h1 style='text-align:center;'>⚖️ VerdictAI — Multi-Agent Dispute Court</h1>",
-    unsafe_allow_html=True,
-)
-st.markdown(
-    "<p style='text-align:center; color:gray;'>"
-    "Rider Advocate vs. Driver Advocate — Judge delivers the verdict."
-    "</p>",
-    unsafe_allow_html=True,
+    "Review both the rider's and driver's perspectives, see how the evidence "
+    "measures up against Ryde policy, and get a transparent verdict with a "
+    "confidence score. Cases below 70% confidence are flagged for human support."
 )
 st.divider()
 
@@ -232,24 +228,16 @@ def _mock_results(dispute: dict, error_msg: str) -> dict:
     }
 
 if st.button("🛡️ Process Dispute", type="primary", use_container_width=True):
-    # --- Run the agents ---
-    st.info("⚖️ Agents are deliberating... Rider Advocate → Driver Advocate → Judge")
-    
-    progress = st.progress(0, text="Starting agents...")
-    
     # Capture stdout so the UI doesn't get flooded with CrewAI verbose logs
     buffer = io.StringIO()
     with contextlib.redirect_stdout(buffer):
         # Try the real CrewAI path; fall back to a deterministic mock if
         # crewai / LLM backend isn't available (e.g. no API key on demo machine).
-        try:
-            results = run_dispute_detailed(dispute)
-        except Exception as e:
-            results = _mock_results(dispute, str(e))
-    
-    progress.progress(100, text="Deliberation complete!")
-
-    st.success("✅ Verdict delivered!")
+        with st.spinner("🔍 Analyzing evidence..."):
+            try:
+                results = run_dispute_detailed(dispute)
+            except Exception as e:
+                results = _mock_results(dispute, str(e))
 
     # --- Layout: Rider Case | Driver Case ---
     col_rider, col_driver = st.columns(2)
@@ -268,24 +256,26 @@ if st.button("🛡️ Process Dispute", type="primary", use_container_width=True
 
     # --- Final Verdict ---
     st.subheader("⚖️ Judge's Final Verdict")
-    st.caption("Reviewing both arguments and applying Ryde policy...")
+    with st.spinner("⚖️ Delivering verdict..."):
+        verdict_text = results["verdict"]
+        confidence = results["confidence"]
 
-    verdict_text = results["verdict"]
-    st.metric("Confidence", f"{results['confidence']}%")
-    if results["escalated"]:
-        st.error("Escalated to human support because confidence is below 70%.")
-    else:
-        st.info("Not escalated — confidence meets the 70% threshold.")
+        st.markdown("**Evidence confidence**")
+        st.progress(confidence / 100, text=f"{confidence}% confident")
 
-    # Try to colour-code the verdict line
-    if "UPHOLD_RIDER_CLAIM" in verdict_text:
-        st.error("🔴 VERDICT: Rider claim upheld — refund awarded.")
-    elif "DENY_RIDER_CLAIM" in verdict_text:
-        st.success("🟢 VERDICT: Rider claim denied — no refund.")
-    elif "PARTIAL" in verdict_text:
-        st.warning("🟡 VERDICT: Partial resolution.")
+        if results["escalated"]:
+            st.warning("Escalated to human support because confidence is below 70%.")
+        else:
+            st.caption("Confidence meets the 70% threshold; no human escalation is required.")
 
-    st.code(verdict_text, language="text")
+        if "UPHOLD_RIDER_CLAIM" in verdict_text:
+            st.success("🟢 **Approved** — the rider's claim is upheld.")
+        elif "DENY_RIDER_CLAIM" in verdict_text:
+            st.error("🔴 **Denied** — the rider's claim is not upheld.")
+        elif "PARTIAL" in verdict_text:
+            st.warning("🟡 **Partially approved** — see the reasoning below.")
+
+        st.code(verdict_text, language="text")
 
     # --- Raw dispute data (for debugging / Q&A during demo) ---
     with st.expander("🔍 Raw Dispute Data", expanded=False):
