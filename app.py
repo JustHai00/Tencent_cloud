@@ -6,14 +6,14 @@ Run:
 
 Features:
   - Title: ⚖️ VerdictAI — Multi-Agent Dispute Court
-  - Dropdown to select dispute (D001 / D002)
-  - "Process Dispute" button → runs the 3-agent crew
+  - Dropdown to select a Chinese or Singapore demo dispute
+  - "Process Dispute" button → runs three local AI roles
   - Clean layout: Rider Case → Driver Case → Final Verdict
 """
 
 import streamlit as st
 
-from mock_data import SAMPLE_DISPUTES, get_dispute_by_id
+from mock_data import SAMPLE_DISPUTES, format_money, get_dispute_by_id
 from agents import (
     apply_confidence_escalation,
     format_dispute,
@@ -48,9 +48,11 @@ st.divider()
 # ---------------------------------------------------------------------------
 # Build a friendly label map:  "D001 — fare_route_dispute"  etc.
 _dispute_labels = {}
-for d in SAMPLE_DISPUTES:
-    short_id = "D001" if d["case_id"].endswith("00104") else "D002"
-    label = f"{short_id} — {d['type'].replace('_', ' ')}  ({d['trip']['city']})"
+for index, d in enumerate(SAMPLE_DISPUTES, start=1):
+    label = (
+        f"D{index:03d} — {d['trip']['city']} — "
+        f"{d['type'].replace('_', ' ')} ({d['fare']['currency']})"
+    )
     _dispute_labels[label] = d["case_id"]
 
 selected_label = st.selectbox(
@@ -71,8 +73,16 @@ with st.expander("📋 Dispute Summary", expanded=False):
         st.metric("Rider", dispute["rider"]["name"])
         st.metric("Driver", dispute["driver"]["name"])
     with col3:
-        st.metric("Actual Fare", f"{dispute['fare']['actual_fare']} {dispute['fare']['currency']}")
-        st.metric("Requested Refund", f"{dispute['claim']['requested_refund']} {dispute['fare']['currency']}")
+        st.metric(
+            "Actual Fare",
+            format_money(dispute["fare"]["actual_fare"], dispute["fare"]["currency"]),
+        )
+        st.metric(
+            "Requested Refund",
+            format_money(dispute["claim"]["requested_refund"], dispute["fare"]["currency"]),
+        )
+    if dispute["fare"]["currency"] == "CNY":
+        st.caption("SGD equivalents are estimates using a fixed demo rate of 1 CNY ≈ S$0.19, not a live exchange rate.")
 
     st.text_area(
         "Rider's Claim",
@@ -109,7 +119,7 @@ def _mock_results(dispute: dict, error_msg: str) -> dict:
     # --- Rider case ---
     rider_case = (
         f"**Rider {d['rider']['name']}** filed this claim requesting "
-        f"**{d['claim']['requested_refund']} {d['fare']['currency']}** refund.\n\n"
+        f"**{format_money(d['claim']['requested_refund'], d['fare']['currency'])}** refund.\n\n"
         f"**Claim:** {d['claim']['reason']}\n\n"
         f"**Supporting evidence:**\n"
     )
@@ -119,8 +129,8 @@ def _mock_results(dispute: dict, error_msg: str) -> dict:
         f"\n**Key data points:**\n"
         f"- Estimated distance: {d['trip']['expected_distance_km']} km\n"
         f"- Actual distance: {d['trip']['actual_distance_km']} km\n"
-        f"- Estimated fare: {d['fare']['estimated_fare']} {d['fare']['currency']}\n"
-        f"- Actual fare: {d['fare']['actual_fare']} {d['fare']['currency']}\n"
+        f"- Estimated fare: {format_money(d['fare']['estimated_fare'], d['fare']['currency'])}\n"
+        f"- Actual fare: {format_money(d['fare']['actual_fare'], d['fare']['currency'])}\n"
     )
 
     # --- Driver case ---
@@ -154,7 +164,7 @@ def _mock_results(dispute: dict, error_msg: str) -> dict:
                 f"verifiable road-closure evidence; a general detour preference "
                 f"does not constitute a valid reason under policy.\n"
                 f"POLICY_APPLIED: Route Deviation Rule\n"
-                f"REFUND_AMOUNT: {refund}\n"
+                f"REFUND_AMOUNT: {format_money(refund, d['fare']['currency'])}\n"
                 f"REFUND_CURRENCY: {d['fare']['currency']}"
             )
         else:
@@ -164,7 +174,7 @@ def _mock_results(dispute: dict, error_msg: str) -> dict:
                 f"estimated distance ({expected} km). The deviation is within "
                 f"acceptable bounds.\n"
                 f"POLICY_APPLIED: Route Deviation Rule\n"
-                f"REFUND_AMOUNT: 0\n"
+                f"REFUND_AMOUNT: {format_money(0, d['fare']['currency'])}\n"
                 f"REFUND_CURRENCY: {d['fare']['currency']}"
             )
 
@@ -193,7 +203,7 @@ def _mock_results(dispute: dict, error_msg: str) -> dict:
                 f"the required 5-minute wait. The rider's chat messages show they "
                 f"were communicating during the window. The no-show fee is waived.\n"
                 f"POLICY_APPLIED: No-Show Cancellation Rule\n"
-                f"REFUND_AMOUNT: {refund}\n"
+                f"REFUND_AMOUNT: {format_money(refund, d['fare']['currency'])}\n"
                 f"REFUND_CURRENCY: {d['fare']['currency']}"
             )
         else:
@@ -203,12 +213,15 @@ def _mock_results(dispute: dict, error_msg: str) -> dict:
                 f"the 5-minute requirement. Multiple unanswered call attempts "
                 f"were made. The no-show fee is upheld.\n"
                 f"POLICY_APPLIED: No-Show Cancellation Rule\n"
-                f"REFUND_AMOUNT: 0\n"
+                f"REFUND_AMOUNT: {format_money(0, d['fare']['currency'])}\n"
                 f"REFUND_CURRENCY: {d['fare']['currency']}"
             )
     else:
         confidence = 0
-        verdict = "VERDICT: PARTIAL\nREASONING: Unknown dispute type.\nREFUND_AMOUNT: 0"
+        verdict = (
+            "VERDICT: PARTIAL\nREASONING: Unknown dispute type.\n"
+            f"REFUND_AMOUNT: {format_money(0, d['fare']['currency'])}"
+        )
 
     verdict += f"\nCONFIDENCE: {confidence}"
     verdict, confidence, escalated = apply_confidence_escalation(verdict)
