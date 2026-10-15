@@ -43,7 +43,6 @@ RYDE_POLICY = {
     "escalation_threshold": 70,  # 0-100 confidence score
 }
 
-
 # ---------------------------------------------------------------------------
 # CrewAI / LLM Configuration
 # ---------------------------------------------------------------------------
@@ -62,7 +61,6 @@ LLM_CONFIG = {
     "max_tokens": 500,
     "verbose": True,
 }
-
 
 # ---------------------------------------------------------------------------
 # Agent Configuration
@@ -118,7 +116,6 @@ AGENT_CONFIG = {
     },
 }
 
-
 # ---------------------------------------------------------------------------
 # App / Streamlit Configuration
 # ---------------------------------------------------------------------------
@@ -129,7 +126,6 @@ APP_CONFIG = {
     "layout": "wide",
 }
 
-
 # ---------------------------------------------------------------------------
 # Verdict display mapping (for UI color-coding)
 # ---------------------------------------------------------------------------
@@ -139,10 +135,10 @@ VERDICT_STYLES = {
     "PARTIAL":            {"color": "warning", "icon": "🟡", "label": "Partial resolution."},
 }
 
-
 if __name__ == "__main__":
     import json
     print("RYDE_POLICY:")
     print(json.dumps(RYDE_POLICY, indent=2, ensure_ascii=False))
     print("\nLLM_CONFIG:")
     print(json.dumps(LLM_CONFIG, indent=2, ensure_ascii=False))
+
