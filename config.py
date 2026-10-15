@@ -44,22 +44,13 @@ RYDE_POLICY = {
 }
 
 # ---------------------------------------------------------------------------
-# CrewAI / LLM Configuration
+# Local LLM Configuration
 # ---------------------------------------------------------------------------
 LLM_CONFIG = {
-    # Set your provider & model here.
-    # Example values shown — uncomment and adjust for your environment.
-    #
-    # "provider": "openai",
-    # "model": "gpt-4o-mini",
-    # "temperature": 0.3,
-    # "api_key_env": "OPENAI_API_KEY",  # reads from environment variable
-
-    # If no API key is set, the app falls back to the deterministic
-    # rule-based engine in app.py (_mock_results).
+    # Ollama runs the model locally; no hosted API key is required.
+    "ollama_host": "http://localhost:11434",
+    "ollama_model": "qwen2.5:3b",
     "fallback_enabled": True,
-    "max_tokens": 500,
-    "verbose": True,
 }
 
 # ---------------------------------------------------------------------------
@@ -111,7 +102,8 @@ AGENT_CONFIG = {
             "REASONING: [2-4 sentences explaining the decision]\n"
             "POLICY_APPLIED: [name the specific rule used]\n"
             "REFUND_AMOUNT: [number or 0]\n"
-            "REFUND_CURRENCY: [currency code]"
+            "REFUND_CURRENCY: [currency code]\n"
+            "CONFIDENCE: [integer from 0 to 100]"
         ),
     },
 }
@@ -141,4 +133,3 @@ if __name__ == "__main__":
     print(json.dumps(RYDE_POLICY, indent=2, ensure_ascii=False))
     print("\nLLM_CONFIG:")
     print(json.dumps(LLM_CONFIG, indent=2, ensure_ascii=False))
-
