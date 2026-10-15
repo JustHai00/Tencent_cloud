@@ -11,9 +11,6 @@ Features:
   - Clean layout: Rider Case → Driver Case → Final Verdict
 """
 
-import io
-import contextlib
-
 import streamlit as st
 
 from mock_data import SAMPLE_DISPUTES, get_dispute_by_id
@@ -102,7 +99,7 @@ with st.expander("📜 Ryde Dispute Resolution Policy", expanded=False):
 st.divider()
 
 # ---------------------------------------------------------------------------
-# Deterministic fallback (used only when CrewAI / LLM is unavailable)
+# Deterministic fallback (used when the local Ollama model is unavailable)
 # ---------------------------------------------------------------------------
 def _mock_results(dispute: dict, error_msg: str) -> dict:
     """Produce a realistic verdict without an LLM, for offline demos."""
@@ -225,19 +222,17 @@ def _mock_results(dispute: dict, error_msg: str) -> dict:
         "verdict": verdict,
         "confidence": confidence,
         "escalated": escalated,
+        "engine": "Offline deterministic fallback",
     }
 
 if st.button("🛡️ Process Dispute", type="primary", use_container_width=True):
-    # Capture stdout so the UI doesn't get flooded with CrewAI verbose logs
-    buffer = io.StringIO()
-    with contextlib.redirect_stdout(buffer):
-        # Try the real CrewAI path; fall back to a deterministic mock if
-        # crewai / LLM backend isn't available (e.g. no API key on demo machine).
-        with st.spinner("🔍 Analyzing evidence..."):
-            try:
-                results = run_dispute_detailed(dispute)
-            except Exception as e:
-                results = _mock_results(dispute, str(e))
+    with st.spinner("🔍 Analyzing evidence..."):
+        try:
+            results = run_dispute_detailed(dispute)
+        except Exception as e:
+            results = _mock_results(dispute, str(e))
+
+    st.caption(f"Deliberation engine: {results['engine']}")
 
     # --- Layout: Rider Case | Driver Case ---
     col_rider, col_driver = st.columns(2)
