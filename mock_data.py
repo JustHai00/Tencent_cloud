@@ -8,6 +8,9 @@ Contains two realistic ride-hailing dispute cases stored as Python dictionaries:
 All values are fictional but realistic. Import this module directly:
 
     from mock_data import SAMPLE_DISPUTES, get_dispute_by_id
+
+Sample monetary amounts are shown in SGD, converted from CNY at an approximate
+rate of 0.19 SGD per CNY.
 """
 
 from datetime import datetime, timedelta
@@ -80,15 +83,15 @@ fare_route_dispute = {
 
     # ---- fare breakdown ----
     "fare": {
-        "currency": "CNY",
-        "base_fare": 5.00,
-        "per_km_rate": 2.30,
-        "per_min_rate": 0.40,
-        "estimated_fare": 35.36,   # 5 + 13.2*2.3 + 40*0.4 (pre-trip estimate)
-        "actual_fare": 48.94,       # charged amount
+        "currency": "SGD",
+        "base_fare": 0.95,
+        "per_km_rate": 0.44,
+        "per_min_rate": 0.08,
+        "estimated_fare": 6.72,
+        "actual_fare": 9.30,       # charged amount
         "toll": 0.00,
         "surge_multiplier": 1.0,
-        "paid_amount": 48.94,
+        "paid_amount": 9.30,
         "payment_method": "credit_card",
     },
 
@@ -96,8 +99,8 @@ fare_route_dispute = {
     "claim": {
         "filed_by": "rider",
         "reason": "Driver took a significantly longer route (via Lianhuachi East Road) "
-                  "instead of the GPS-suggested shortest path, inflating the fare by ~13 CNY.",
-        "requested_refund": 13.58,
+                  "instead of the GPS-suggested shortest path, inflating the fare by ~2.58 SGD.",
+        "requested_refund": 2.58,
         "evidence_notes": [
             "Rider captured two screenshots of in-app navigation showing suggested route.",
             "Rider's phone GPS recorded a different path than the suggested route.",
@@ -204,15 +207,15 @@ no_show_dispute = {
 
     # ---- fare / fee breakdown ----
     "fare": {
-        "currency": "CNY",
-        "base_fare": 8.00,
-        "per_km_rate": 2.50,
-        "per_min_rate": 0.45,
-        "estimated_fare": 39.80,
+        "currency": "SGD",
+        "base_fare": 1.52,
+        "per_km_rate": 0.48,
+        "per_min_rate": 0.09,
+        "estimated_fare": 7.56,
         "actual_fare": 0.00,              # trip didn't happen
-        "cancellation_fee": 15.00,        # charged to rider
-        "no_show_fee": 15.00,
-        "paid_amount": 15.00,
+        "cancellation_fee": 2.85,         # charged to rider
+        "no_show_fee": 2.85,
+        "paid_amount": 2.85,
         "payment_method": "alipay",
     },
 
@@ -221,8 +224,8 @@ no_show_dispute = {
         "filed_by": "rider",
         "reason": "I arrived at Pickup Point B at 09:53, within the grace period, "
                   "but the driver left at 09:56 and marked me as a no-show. "
-                  "The 15 CNY cancellation fee is unjustified.",
-        "requested_refund": 15.00,
+                  "The 2.85 SGD cancellation fee is unjustified.",
+        "requested_refund": 2.85,
         "evidence_notes": [
             "Boarding pass shows flight landed at 09:42.",
             "Rider has a timestamped photo of Pickup Point B taken at 09:53.",
