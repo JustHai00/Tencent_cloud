@@ -86,3 +86,10 @@ The model download requires an internet connection and disk space. After setup, 
 3. In `app.py`, add deterministic verdict logic for the new `type` inside `_mock_results()`. The live judge receives the dispute data automatically, but add or update the rules in `agents.py`'s `RYDE_POLICY` and judge prompt if the new type needs its own policy.
 4. Keep refund amounts in the case's original currency and include that currency in the verdict. For CNY examples, the UI also displays the fixed approximate SGD conversion; SGD cases display SGD directly.
 5. Run the app and process the new case to verify the summary, both arguments, verdict, confidence, and escalation display.
+## 🔮 Planned Improvements
+- [ ] Connect to real Ryde API / database
+- [ ] Add LLM integration for natural language verdicts
+- [ ] Add appeal workflow & history tracking
+- [ ] User authentication & dashboard
+- [ ] Multi-language support
+- [ ] Improve LLM verdict quality and add support for additional models
