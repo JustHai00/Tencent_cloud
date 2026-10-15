@@ -28,6 +28,11 @@ Dispute → Driver Advocate ─┘
 1. **Route / Fare Deviation** — Refund if >20% above estimated distance with no rider consent
 2. **No-Show Cancellation** — Waive fee if rider arrived within 5-minute grace period
 
+### Sample cases and currencies
+- Two fictional China cases use **CNY**. Their fare and refund amounts also show an approximate Singapore-dollar equivalent using a fixed demo conversion of **1 CNY ≈ S$0.19**.
+- A third fictional case uses Singapore locations and **SGD** directly.
+- The conversion is for demonstration only; it is not a live exchange rate.
+
 ## 🚀 How to Run
 1. Install [Ollama for Windows](https://ollama.com/download) and start the Ollama app.
 2. Download the local model once:
