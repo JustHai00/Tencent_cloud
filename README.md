@@ -6,15 +6,16 @@
 ---
 
 ## 📌 Overview
-VerdictAI transforms Ryde's manual dispute resolution (24–72 hours) into an autonomous multi-agent system that resolves cases in **3–5 minutes**. Two dedicated advocates represent the rider and driver, then a neutral Judge Agent renders a policy-grounded verdict with confidence scoring. Low-confidence cases auto-escalate to human support.
+VerdictAI transforms Ryde's manual dispute resolution (24–72 hours) into an autonomous multi-agent system that resolves cases in **3–5 minutes**. Two dedicated advocates represent the rider and driver, then a neutral Judge Agent renders a policy-grounded verdict with an evidence-based confidence score. Verdicts below **70% confidence** are escalated to human support.
 
 ## 🧠 How It Works
+```
 Dispute → Rider Advocate ─┐
                            ↓
                          Judge → Verdict + Confidence
                            ↑
 Dispute → Driver Advocate ─┘
-
+```
 
 ### 3 Core Agents
 | Agent | Role |
