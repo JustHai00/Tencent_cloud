@@ -17,6 +17,7 @@ Usage:
 
 from __future__ import annotations
 
+import re
 import sys
 import textwrap
 from typing import TYPE_CHECKING
@@ -45,6 +46,49 @@ Ryde Dispute Resolution Policy:
    - "Arrived" is determined by: rider chat timestamp, rider GPS, or photo evidence.
    - The driver must have waited at least 5 minutes before declaring a no-show.
 """.strip()
+
+CONFIDENCE_ESCALATION_THRESHOLD = 70
+
+
+def apply_confidence_escalation(verdict_text: str) -> tuple[str, int, bool]:
+    """Normalize the judge's confidence and enforce the human-escalation threshold."""
+    confidence_match = re.search(
+        r"(?im)^CONFIDENCE:\s*(?:Based on evidence[:,]?\s*)?"
+        r"(\d{1,3})\s*%?(?:\s+confident)?\s*$",
+        verdict_text,
+    )
+    if confidence_match is None:
+        raise ValueError("Judge verdict must include a numeric CONFIDENCE from 0 to 100.")
+
+    confidence = int(confidence_match.group(1))
+    if confidence > 100:
+        raise ValueError(f"Judge confidence must be between 0 and 100, got {confidence}.")
+
+    escalated = confidence < CONFIDENCE_ESCALATION_THRESHOLD
+    confidence_line = f"CONFIDENCE: Based on evidence: {confidence}% confident"
+    escalation_line = (
+        "ESCALATION: Escalated to human support"
+        if escalated
+        else "ESCALATION: Not required"
+    )
+
+    verdict_text = re.sub(
+        r"(?im)^CONFIDENCE:.*$",
+        confidence_line,
+        verdict_text,
+        count=1,
+    )
+    if re.search(r"(?im)^ESCALATION:", verdict_text):
+        verdict_text = re.sub(
+            r"(?im)^ESCALATION:.*$",
+            escalation_line,
+            verdict_text,
+            count=1,
+        )
+    else:
+        verdict_text = f"{verdict_text.rstrip()}\n{escalation_line}"
+
+    return verdict_text, confidence, escalated
 
 
 # ---------------------------------------------------------------------------
@@ -213,12 +257,14 @@ def _build_tasks(dispute: dict) -> tuple[list[Task], tuple[Agent, Agent, Agent]]
             "REASONING: [2-4 sentences explaining the decision]\n"
             "POLICY_APPLIED: [name the specific rule used]\n"
             "REFUND_AMOUNT: [number or 0]\n"
-            "REFUND_CURRENCY: [currency code]"
+            "REFUND_CURRENCY: [currency code]\n"
+            "CONFIDENCE: [integer from 0 to 100, based on evidence completeness, "
+            "reliability, and contradictions]"
         ),
         agent=judge,
         expected_output=(
             "A structured verdict with: VERDICT, REASONING, "
-            "POLICY_APPLIED, REFUND_AMOUNT, REFUND_CURRENCY."
+            "POLICY_APPLIED, REFUND_AMOUNT, REFUND_CURRENCY, and CONFIDENCE."
         ),
         context=[task_rider, task_driver],  # judge sees both advocates' outputs
     )
@@ -244,7 +290,8 @@ def run_dispute(dispute: dict) -> str:
 
     result = crew.kickoff()
     # CrewAI returns a CrewOutput; .raw or str() gives the final task's output
-    return str(result)
+    verdict, _, _ = apply_confidence_escalation(str(result))
+    return verdict
 
 
 def run_dispute_detailed(dispute: dict) -> dict:
@@ -273,10 +320,13 @@ def run_dispute_detailed(dispute: dict) -> dict:
             return ""
         return getattr(out, "raw", None) or str(out)
 
+    verdict, confidence, escalated = apply_confidence_escalation(_extract(tasks[2]))
     return {
         "rider_case": _extract(tasks[0]),
         "driver_case": _extract(tasks[1]),
-        "verdict": _extract(tasks[2]),
+        "verdict": verdict,
+        "confidence": confidence,
+        "escalated": escalated,
     }
 
 
