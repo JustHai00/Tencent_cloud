@@ -1,5 +1,5 @@
 """
-agents.py — Core CrewAI agents for VerdictAI (hackathon project).
+agents.py — Local Ollama-powered agents for VerdictAI (hackathon project).
 
 Three agents collaborate to resolve ride-hailing disputes:
   1) Rider Advocate  — builds the rider's case from mock data.
@@ -17,14 +17,15 @@ Usage:
 
 from __future__ import annotations
 
+import json
+import os
 import re
 import sys
 import textwrap
-from typing import TYPE_CHECKING
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
-if TYPE_CHECKING:
-    from crewai import Agent, Task
-
+from config import LLM_CONFIG
 from mock_data import SAMPLE_DISPUTES, get_dispute_by_id
 
 
@@ -48,6 +49,8 @@ Ryde Dispute Resolution Policy:
 """.strip()
 
 CONFIDENCE_ESCALATION_THRESHOLD = 70
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", LLM_CONFIG["ollama_host"]).rstrip("/")
+OLLAMA_MODEL = os.environ.get("VERDICTAI_OLLAMA_MODEL", LLM_CONFIG["ollama_model"])
 
 
 def apply_confidence_escalation(verdict_text: str) -> tuple[str, int, bool]:
@@ -156,177 +159,97 @@ def format_dispute(d: dict) -> str:
     return "\n".join(lines)
 
 
-def _build_agents() -> tuple[Agent, Agent, Agent]:
-    from crewai import Agent
-
-    rider_advocate = Agent(
-        role="Rider Advocate",
-        goal=(
-            "Build the strongest possible case for the rider based on the dispute "
-            "data. Highlight evidence that supports the rider's claim, including "
-            "GPS data, chat logs, timestamps, and fare discrepancies."
-        ),
-        backstory=(
-            "You are a seasoned consumer-rights advocate specializing in "
-            "ride-hailing disputes. You fight for fair treatment of riders."
-        ),
-        verbose=True,
-        allow_delegation=False,
+def _ollama_chat(prompt: str) -> str:
+    """Send a prompt to the local Ollama server and return its response text."""
+    payload = json.dumps(
+        {
+            "model": OLLAMA_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "options": {"temperature": 0.2},
+        }
+    ).encode("utf-8")
+    request = Request(
+        f"{OLLAMA_HOST}/api/chat",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
     )
 
-    driver_advocate = Agent(
-        role="Driver Advocate",
-        goal=(
-            "Build the strongest possible defence for the driver based on the "
-            "dispute data. Highlight evidence that justifies the driver's actions, "
-            "including routing decisions, wait times, call attempts, and policy compliance."
-        ),
-        backstory=(
-            "You are a legal advocate for ride-hailing drivers. You ensure drivers "
-            "are treated fairly and their side of the story is heard."
-        ),
-        verbose=True,
-        allow_delegation=False,
-    )
+    try:
+        with urlopen(request, timeout=300) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except HTTPError as error:
+        details = error.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"Ollama returned HTTP {error.code}: {details or error.reason}"
+        ) from error
+    except URLError as error:
+        raise RuntimeError(
+            f"Cannot connect to Ollama at {OLLAMA_HOST}. Start Ollama and ensure "
+            f"the {OLLAMA_MODEL!r} model is installed."
+        ) from error
+    except json.JSONDecodeError as error:
+        raise RuntimeError("Ollama returned an invalid JSON response.") from error
 
-    judge = Agent(
-        role="Judge Agent",
-        goal=(
-            "Review both the rider's and driver's arguments, apply the Ryde "
-            "Dispute Resolution Policy, and deliver a clear, fair verdict with "
-            "reasoning and a refund recommendation."
-        ),
-        backstory=(
-            "You are an impartial adjudicator trained on the Ryde platform's "
-            "policies. You weigh evidence objectively and produce structured verdicts."
-        ),
-        verbose=True,
-        allow_delegation=False,
-    )
-    return rider_advocate, driver_advocate, judge
-
-
-# ---------------------------------------------------------------------------
-# Task builder — creates the 3 tasks for a given dispute
-# ---------------------------------------------------------------------------
-def build_tasks(dispute: dict) -> list[Task]:
-    return _build_tasks(dispute)[0]
-
-
-def _build_tasks(dispute: dict) -> tuple[list[Task], tuple[Agent, Agent, Agent]]:
-    from crewai import Task
-
-    rider_advocate, driver_advocate, judge = _build_agents()
-    dispute_text = format_dispute(dispute)
-
-    task_rider = Task(
-        description=(
-            "You are representing the RIDER in this ride-hailing dispute.\n\n"
-            "Here is the full dispute data:\n\n"
-            f"{dispute_text}\n\n"
-            "Build the rider's case. Be specific: cite GPS points, chat "
-            "timestamps, fare numbers, and any policy that supports the rider. "
-            "Output a concise argument (under 300 words)."
-        ),
-        agent=rider_advocate,
-        expected_output="A concise argument supporting the rider's claim.",
-    )
-
-    task_driver = Task(
-        description=(
-            "You are representing the DRIVER in this ride-hailing dispute.\n\n"
-            "Here is the full dispute data:\n\n"
-            f"{dispute_text}\n\n"
-            "Build the driver's defence. Be specific: cite GPS points, chat "
-            "timestamps, call attempts, and any justification for the driver's "
-            "actions. Output a concise argument (under 300 words)."
-        ),
-        agent=driver_advocate,
-        expected_output="A concise argument supporting the driver's defence.",
-    )
-
-    task_judge = Task(
-        description=(
-            "You are the JUDGE. Review the rider's argument and the driver's "
-            "defence, then apply the Ryde Dispute Resolution Policy below.\n\n"
-            f"{RYDE_POLICY}\n\n"
-            "Dispute data for reference:\n\n"
-            f"{dispute_text}\n\n"
-            "Produce your verdict in this EXACT format:\n\n"
-            "VERDICT: [UPHOLD_RIDER_CLAIM | DENY_RIDER_CLAIM | PARTIAL]\n"
-            "REASONING: [2-4 sentences explaining the decision]\n"
-            "POLICY_APPLIED: [name the specific rule used]\n"
-            "REFUND_AMOUNT: [number or 0]\n"
-            "REFUND_CURRENCY: [currency code]\n"
-            "CONFIDENCE: [integer from 0 to 100, based on evidence completeness, "
-            "reliability, and contradictions]"
-        ),
-        agent=judge,
-        expected_output=(
-            "A structured verdict with: VERDICT, REASONING, "
-            "POLICY_APPLIED, REFUND_AMOUNT, REFUND_CURRENCY, and CONFIDENCE."
-        ),
-        context=[task_rider, task_driver],  # judge sees both advocates' outputs
-    )
-
-    return [task_rider, task_driver, task_judge], (rider_advocate, driver_advocate, judge)
+    content = result.get("message", {}).get("content")
+    if not isinstance(content, str) or not content.strip():
+        raise RuntimeError("Ollama returned an empty response.")
+    return content.strip()
 
 
 # ---------------------------------------------------------------------------
 # Run a single dispute through the crew
 # ---------------------------------------------------------------------------
 def run_dispute(dispute: dict) -> str:
-    """Kick off a 3-agent crew for one dispute; return the judge's verdict."""
-    from crewai import Crew, Process
-
-    tasks, agents = _build_tasks(dispute)
-
-    crew = Crew(
-        agents=list(agents),
-        tasks=tasks,
-        process=Process.sequential,   # rider → driver → judge (in order)
-        verbose=True,
-    )
-
-    result = crew.kickoff()
-    # CrewAI returns a CrewOutput; .raw or str() gives the final task's output
-    verdict, _, _ = apply_confidence_escalation(str(result))
-    return verdict
+    """Run the local three-role deliberation and return the judge's verdict."""
+    return run_dispute_detailed(dispute)["verdict"]
 
 
 def run_dispute_detailed(dispute: dict) -> dict:
-    """Run the crew and return each agent's output separately.
+    """Run the three agent roles with a local Ollama model.
 
     Returns a dict with keys: 'rider_case', 'driver_case', 'verdict'.
     Each value is the raw string output from that task.
     """
-    from crewai import Crew, Process
-
-    tasks, agents = _build_tasks(dispute)
-
-    crew = Crew(
-        agents=list(agents),
-        tasks=tasks,
-        process=Process.sequential,
-        verbose=True,
+    dispute_text = format_dispute(dispute)
+    rider_case = _ollama_chat(
+        "You are the Rider Advocate in a fair dispute review. Make the strongest "
+        "evidence-based case for the rider. Cite relevant details from the dispute. "
+        "Do not invent evidence. Keep your argument concise.\n\n"
+        f"Dispute data:\n{dispute_text}"
     )
-
-    crew.kickoff()
-
-    # After execution, each Task object has .output (TaskOutput) with .raw
-    def _extract(task) -> str:
-        out = getattr(task, "output", None)
-        if out is None:
-            return ""
-        return getattr(out, "raw", None) or str(out)
-
-    verdict, confidence, escalated = apply_confidence_escalation(_extract(tasks[2]))
+    driver_case = _ollama_chat(
+        "You are the Driver Advocate in a fair dispute review. Make the strongest "
+        "evidence-based defence for the driver. Cite relevant details from the "
+        "dispute. Do not invent evidence. Keep your argument concise.\n\n"
+        f"Dispute data:\n{dispute_text}"
+    )
+    verdict_text = _ollama_chat(
+        "You are the neutral Judge. Review the dispute data and both advocates' "
+        "arguments, then apply the policy. Base confidence on evidence completeness, "
+        "reliability, and contradictions; it is an evidence estimate, not a statistical "
+        "probability. Do not invent facts. Return exactly these fields, each on its "
+        "own line:\n"
+        "VERDICT: [UPHOLD_RIDER_CLAIM | DENY_RIDER_CLAIM | PARTIAL]\n"
+        "REASONING: [2-4 concise sentences]\n"
+        "POLICY_APPLIED: [policy rule]\n"
+        "REFUND_AMOUNT: [number or 0]\n"
+        "REFUND_CURRENCY: [currency code]\n"
+        "CONFIDENCE: [integer from 0 to 100]\n\n"
+        f"Policy:\n{RYDE_POLICY}\n\n"
+        f"Dispute data:\n{dispute_text}\n\n"
+        f"Rider Advocate:\n{rider_case}\n\n"
+        f"Driver Advocate:\n{driver_case}"
+    )
+    verdict, confidence, escalated = apply_confidence_escalation(verdict_text)
     return {
-        "rider_case": _extract(tasks[0]),
-        "driver_case": _extract(tasks[1]),
+        "rider_case": rider_case,
+        "driver_case": driver_case,
         "verdict": verdict,
         "confidence": confidence,
         "escalated": escalated,
+        "engine": f"Ollama local model ({OLLAMA_MODEL})",
     }
 
 
