@@ -1,0 +1,122 @@
+# VerdictAI — Architecture Diagram (Hand-Draw Reference)
+
+## How to draw this in 2 minutes
+
+Draw 4 horizontal layers, top to bottom. Boxes and arrows only.
+
+---
+
+## ASCII Version
+
+```
+LAYER 1: EVIDENCE SOURCES
++----------------------------+        +----------------------------+
+| Rider Evidence Sources     |        | Driver Evidence Sources    |
+| GPS trail, fare, chat      |        | Route data, logs, earnings |
++----------------------------+        +----------------------------+
+          |                                    |
+          v                                    v
+LAYER 2: ADVOCATE AGENTS
++----------------------------+        +----------------------------+
+| Rider Advocate Agent       |        | Driver Advocate Agent      |
+| Builds rider case brief    |        | Builds driver case brief   |
++----------------------------+        +----------------------------+
+          |                                    |
+          v                                    v
+LAYER 2b: CASE BRIEFS
++----------------------------+        +----------------------------+
+| Rider Case Brief           |        | Driver Case Brief          |
++----------------------------+        +----------------------------+
+          |                                    |
+          +----------------->|<-----------------+
+                             |
+                             v
+LAYER 3: ADJUDICATION
+                  +----------------------------+
+                  | Judge Agent                |
+                  | Reviews both case briefs   |
+                  +----------------------------+
+                             |
+                             v
+                  +----------------------------+
+                  | Confidence Score Check     |
+                  +----------------------------+
+                    /                      \
+              >= 70%                     < 70%
+                  /                          \
+                 v                            v
+LAYER 4: OUTPUT AND ESCALATION
++----------------------------+        +----------------------------+
+| Verdict Delivered          |        | Human CS Escalation        |
+| Auto-resolve               |        | Low confidence or appeal   |
+| + appeal option (48h)      |        +----------------------------+
++----------------------------+
+```
+
+---
+
+## Step-by-Step Drawing Guide
+
+### Step 1 — Draw Layer 1: Two boxes side by side (top)
+- LEFT box: "Rider Evidence Sources" / subtitle: "GPS trail, fare receipt, chat history"
+- RIGHT box: "Driver Evidence Sources" / subtitle: "Route data, trip logs, earnings"
+- Draw arrow DOWN from each box
+
+### Step 2 — Draw Layer 2: Two boxes below (one under each evidence box)
+- LEFT box: "Rider Advocate Agent" / subtitle: "Builds rider case brief"
+- RIGHT box: "Driver Advocate Agent" / subtitle: "Builds driver case brief"
+- Draw arrow DOWN from each
+
+### Step 3 — Draw Layer 2b: Two small boxes (case briefs)
+- LEFT box: "Rider Case Brief"
+- RIGHT box: "Driver Case Brief"
+- Draw arrows from both converging INTO the center (like a Y shape pointing down)
+
+### Step 4 — Draw Layer 3: One box CENTERED
+- Box: "Judge Agent" / subtitle: "Reviews both case briefs"
+- Draw arrow DOWN
+
+### Step 5 — Draw one box CENTERED below Judge
+- Box: "Confidence Score Check"
+- Draw TWO arrows splitting outward — left and right
+
+### Step 6 — Draw Layer 4: Two boxes at the bottom
+- LEFT box (green): "Verdict Delivered" / subtitle: "Auto-resolve + appeal option (48h)"
+  - Label the arrow pointing here: ">= 70%"
+- RIGHT box (amber/yellow): "Human CS Escalation" / subtitle: "Low confidence or appeal requested"
+  - Label the arrow pointing here: "< 70%"
+
+---
+
+## What Each Layer Does
+
+| Layer | What happens | Who acts |
+|-------|-------------|----------|
+| Layer 1 | System pulls trip data automatically | Backend / database |
+| Layer 2 | Each advocate interviews its party, cross-references evidence, builds a case brief | Rider Advocate (LLM) + Driver Advocate (LLM) — run in parallel |
+| Layer 3 | Judge reads both briefs, checks against policy vector DB, calculates confidence 0-100% | Judge Agent (LLM) |
+| Layer 4 Left | High confidence: verdict auto-delivered to both parties with reasoning + 48h appeal window | System (auto) |
+| Layer 4 Right | Low confidence OR appeal requested: routes to human CS team for manual review | Human CS agents |
+
+---
+
+## Key Arrows Summary (for quick sketching)
+
+1. Rider Evidence --> Rider Advocate (down arrow)
+2. Driver Evidence --> Driver Advocate (down arrow)
+3. Rider Advocate --> Rider Case Brief (down arrow)
+4. Driver Advocate --> Driver Case Brief (down arrow)
+5. Rider Case Brief --> Judge Agent (diagonal, converging)
+6. Driver Case Brief --> Judge Agent (diagonal, converging)
+7. Judge Agent --> Confidence Check (down arrow)
+8. Confidence Check --[>= 70%]--> Verdict Delivered (left branch)
+9. Confidence Check --[< 70%]--> Human CS Escalation (right branch)
+
+---
+
+## Color Coding (if drawing digitally)
+- Rider path (left): green/teal tones
+- Driver path (right): orange/coral tones
+- Judge Agent (center): purple tones
+- Verdict (left output): green tones
+- Human escalation (right output): amber/yellow tones
