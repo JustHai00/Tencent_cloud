@@ -6,7 +6,7 @@
 ---
 
 ## 📌 Overview
-VerdictAI transforms Ryde's manual dispute resolution (24–72 hours) into an autonomous multi-agent system that resolves cases in **3–5 minutes**. Two dedicated advocates represent the rider and driver, then a neutral Judge Agent renders a policy-grounded verdict with an evidence-based confidence score. Verdicts below **70% confidence** are escalated to human support.
+VerdictAI demonstrates ride-dispute review with three AI roles: a rider advocate, a driver advocate, and a neutral judge. It runs a local Ollama model, so live deliberation does not require a paid cloud API or API key. Verdicts below **70% confidence** are flagged for human support.
 
 ## 🧠 How It Works
 ```
@@ -29,8 +29,20 @@ Dispute → Driver Advocate ─┘
 2. **No-Show Cancellation** — Waive fee if rider arrived within 5-minute grace period
 
 ## 🚀 How to Run
-```bash
-pip install streamlit
-streamlit run app.py
+1. Install [Ollama for Windows](https://ollama.com/download) and start the Ollama app.
+2. Download the local model once:
 
-Then open: http://localhost:8501
+   ```powershell
+   ollama pull qwen2.5:3b
+   ```
+
+3. In PowerShell, from this project folder, install the app dependency and start Streamlit:
+
+   ```powershell
+   python -m pip install -r requirements.txt
+   python -m streamlit run app.py
+   ```
+
+4. Open http://localhost:8501.
+
+The model download requires an internet connection and disk space. After setup, inference runs on your computer without a paid AI API. Performance depends on your computer; the first response may take longer while the model loads. If Ollama is unavailable, the app identifies that it used its deterministic offline fallback.
