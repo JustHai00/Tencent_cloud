@@ -19,6 +19,7 @@ import streamlit as st
 
 from mock_data import SAMPLE_DISPUTES, get_dispute_by_id
 from agents import (
+    apply_confidence_escalation,
     format_dispute,
     run_dispute_detailed,
     RYDE_POLICY,
@@ -145,6 +146,7 @@ def _mock_results(dispute: dict, error_msg: str) -> dict:
 
     # --- Judge verdict (deterministic logic based on Ryde policy) ---
     if d["type"] == "fare_route_dispute":
+        confidence = 82
         actual = d["trip"]["actual_distance_km"]
         expected = d["trip"]["expected_distance_km"]
         pct_over = ((actual - expected) / expected * 100) if expected else 0
@@ -174,6 +176,7 @@ def _mock_results(dispute: dict, error_msg: str) -> dict:
             )
 
     elif d["type"] == "no_show_dispute":
+        confidence = 65
         from datetime import datetime
         arrived_str = d["trip"].get("driver_arrived_time", "")
         left_str = d["trip"].get("driver_left_time", "")
@@ -211,7 +214,11 @@ def _mock_results(dispute: dict, error_msg: str) -> dict:
                 f"REFUND_CURRENCY: {d['fare']['currency']}"
             )
     else:
+        confidence = 0
         verdict = "VERDICT: PARTIAL\nREASONING: Unknown dispute type.\nREFUND_AMOUNT: 0"
+
+    verdict += f"\nCONFIDENCE: {confidence}"
+    verdict, confidence, escalated = apply_confidence_escalation(verdict)
 
     # Append a note if this was a fallback
     verdict += f"\n\n[Note: LLM backend unavailable — deterministic fallback used. ({error_msg[:80]})]"
@@ -220,6 +227,8 @@ def _mock_results(dispute: dict, error_msg: str) -> dict:
         "rider_case": rider_case,
         "driver_case": driver_case,
         "verdict": verdict,
+        "confidence": confidence,
+        "escalated": escalated,
     }
 
 if st.button("🛡️ Process Dispute", type="primary", use_container_width=True):
@@ -262,6 +271,11 @@ if st.button("🛡️ Process Dispute", type="primary", use_container_width=True
     st.caption("Reviewing both arguments and applying Ryde policy...")
 
     verdict_text = results["verdict"]
+    st.metric("Confidence", f"{results['confidence']}%")
+    if results["escalated"]:
+        st.error("Escalated to human support because confidence is below 70%.")
+    else:
+        st.info("Not escalated — confidence meets the 70% threshold.")
 
     # Try to colour-code the verdict line
     if "UPHOLD_RIDER_CLAIM" in verdict_text:
