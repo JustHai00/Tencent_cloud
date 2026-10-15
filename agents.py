@@ -26,7 +26,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from config import LLM_CONFIG
-from mock_data import SAMPLE_DISPUTES, get_dispute_by_id
+from mock_data import SAMPLE_DISPUTES, format_money, get_dispute_by_id
 
 
 # ---------------------------------------------------------------------------
@@ -121,14 +121,14 @@ def format_dispute(d: dict) -> str:
         f"",
         f"--- Fare ---",
         f"Currency:        {d['fare']['currency']}",
-        f"Estimated fare:  {d['fare']['estimated_fare']}",
-        f"Actual fare:     {d['fare']['actual_fare']}",
-        f"Cancellation fee:{d['fare'].get('cancellation_fee', 0.0)}",
-        f"Paid amount:     {d['fare']['paid_amount']}",
+        f"Estimated fare:  {format_money(d['fare']['estimated_fare'], d['fare']['currency'])}",
+        f"Actual fare:     {format_money(d['fare']['actual_fare'], d['fare']['currency'])}",
+        f"Cancellation fee:{format_money(d['fare'].get('cancellation_fee', 0.0), d['fare']['currency'])}",
+        f"Paid amount:     {format_money(d['fare']['paid_amount'], d['fare']['currency'])}",
         f"",
         f"--- Rider Claim ---",
         f"Reason: {d['claim']['reason']}",
-        f"Requested refund: {d['claim']['requested_refund']}",
+        f"Requested refund: {format_money(d['claim']['requested_refund'], d['fare']['currency'])}",
     ]
     for note in d["claim"].get("evidence_notes", []):
         lines.append(f"  Evidence: {note}")
@@ -229,7 +229,9 @@ def run_dispute_detailed(dispute: dict) -> dict:
         "You are the neutral Judge. Review the dispute data and both advocates' "
         "arguments, then apply the policy. Base confidence on evidence completeness, "
         "reliability, and contradictions; it is an evidence estimate, not a statistical "
-        "probability. Do not invent facts. Return exactly these fields, each on its "
+        "probability. For CNY amounts, the dispute data includes an approximate SGD "
+        "equivalent for reference; base the verdict and refund on the original trip "
+        "currency. Do not invent facts. Return exactly these fields, each on its "
         "own line:\n"
         "VERDICT: [UPHOLD_RIDER_CLAIM | DENY_RIDER_CLAIM | PARTIAL]\n"
         "REASONING: [2-4 concise sentences]\n"
