@@ -1,19 +1,32 @@
 """
 mock_data.py — Sample dispute data for VerdictAI hackathon project.
 
-Contains two realistic ride-hailing dispute cases stored as Python dictionaries:
+Contains fictional ride-hailing dispute cases stored as Python dictionaries:
   1) fare_route_dispute — rider claims the driver took a longer route to overcharge.
   2) no_show_dispute    — rider disputes a cancellation / no-show fee.
+  3) Singapore fare_route_dispute — local SGD example for the hackathon demo.
 
 All values are fictional but realistic. Import this module directly:
 
     from mock_data import SAMPLE_DISPUTES, get_dispute_by_id
 
-Sample monetary amounts are shown in SGD, converted from CNY at an approximate
-rate of 0.19 SGD per CNY.
+Chinese cases use CNY and show approximate SGD equivalents at a fixed demo rate
+of 1 CNY = 0.19 SGD. The Singapore case uses SGD directly. This is illustrative,
+not a live exchange rate.
 """
 
 from datetime import datetime, timedelta
+
+CNY_TO_SGD_ESTIMATE = 0.19
+
+
+def format_money(amount: float, currency: str) -> str:
+    """Format a demo amount, including an approximate SGD equivalent for CNY."""
+    if currency == "CNY":
+        return f"CNY {amount:.2f} (≈ S${amount * CNY_TO_SGD_ESTIMATE:.2f})"
+    if currency == "SGD":
+        return f"S${amount:.2f}"
+    return f"{amount:.2f} {currency}"
 
 
 # ---------------------------------------------------------------------------
@@ -83,15 +96,15 @@ fare_route_dispute = {
 
     # ---- fare breakdown ----
     "fare": {
-        "currency": "SGD",
-        "base_fare": 0.95,
-        "per_km_rate": 0.44,
-        "per_min_rate": 0.08,
-        "estimated_fare": 6.72,
-        "actual_fare": 9.30,       # charged amount
+        "currency": "CNY",
+        "base_fare": 5.00,
+        "per_km_rate": 2.30,
+        "per_min_rate": 0.40,
+        "estimated_fare": 35.36,   # pre-trip estimate
+        "actual_fare": 48.94,      # charged amount
         "toll": 0.00,
         "surge_multiplier": 1.0,
-        "paid_amount": 9.30,
+        "paid_amount": 48.94,
         "payment_method": "credit_card",
     },
 
@@ -99,8 +112,8 @@ fare_route_dispute = {
     "claim": {
         "filed_by": "rider",
         "reason": "Driver took a significantly longer route (via Lianhuachi East Road) "
-                  "instead of the GPS-suggested shortest path, inflating the fare by ~2.58 SGD.",
-        "requested_refund": 2.58,
+                  "instead of the GPS-suggested shortest path, inflating the fare by ~13.58 CNY.",
+        "requested_refund": 13.58,
         "evidence_notes": [
             "Rider captured two screenshots of in-app navigation showing suggested route.",
             "Rider's phone GPS recorded a different path than the suggested route.",
@@ -207,15 +220,15 @@ no_show_dispute = {
 
     # ---- fare / fee breakdown ----
     "fare": {
-        "currency": "SGD",
-        "base_fare": 1.52,
-        "per_km_rate": 0.48,
-        "per_min_rate": 0.09,
-        "estimated_fare": 7.56,
+        "currency": "CNY",
+        "base_fare": 8.00,
+        "per_km_rate": 2.50,
+        "per_min_rate": 0.45,
+        "estimated_fare": 39.80,
         "actual_fare": 0.00,              # trip didn't happen
-        "cancellation_fee": 2.85,         # charged to rider
-        "no_show_fee": 2.85,
-        "paid_amount": 2.85,
+        "cancellation_fee": 15.00,        # charged to rider
+        "no_show_fee": 15.00,
+        "paid_amount": 15.00,
         "payment_method": "alipay",
     },
 
@@ -224,8 +237,8 @@ no_show_dispute = {
         "filed_by": "rider",
         "reason": "I arrived at Pickup Point B at 09:53, within the grace period, "
                   "but the driver left at 09:56 and marked me as a no-show. "
-                  "The 2.85 SGD cancellation fee is unjustified.",
-        "requested_refund": 2.85,
+                  "The 15 CNY cancellation fee is unjustified.",
+        "requested_refund": 15.00,
         "evidence_notes": [
             "Boarding pass shows flight landed at 09:42.",
             "Rider has a timestamped photo of Pickup Point B taken at 09:53.",
@@ -277,9 +290,107 @@ no_show_dispute = {
 
 
 # ===========================================================================
+# Dispute 3 — Singapore fare_route_dispute (SGD)
+# ===========================================================================
+singapore_fare_route_dispute = {
+    "case_id": "VRD-2026-00106",
+    "type": "fare_route_dispute",
+    "status": "open",
+    "priority": "medium",
+    "filed_at": _ts(180),
+    "rider": {
+        "user_id": "RDR-SG-31042",
+        "name": "Aisha Tan",
+        "phone": "+65-8123-4567",
+        "rating": 4.88,
+        "rides_total": 156,
+    },
+    "driver": {
+        "user_id": "DRV-SG-20817",
+        "name": "Daniel Lim",
+        "phone": "+65-8765-4321",
+        "rating": 4.72,
+        "rides_total": 2190,
+        "vehicle": {
+            "plate": "SGX-4821K",
+            "model": "BYD Atto 3",
+            "color": "blue",
+        },
+    },
+    "trip": {
+        "trip_id": "TRP-SG-310106",
+        "city": "Singapore",
+        "pickup": {
+            "label": "Changi Airport Terminal 3, Arrival Pick-up",
+            "lat": 1.3571,
+            "lng": 103.9872,
+        },
+        "dropoff": {
+            "label": "Marina Bay Sands, Hotel Lobby",
+            "lat": 1.2834,
+            "lng": 103.8607,
+        },
+        "request_time": _ts(90),
+        "pickup_time": _ts(100),
+        "dropoff_time": _ts(135),
+        "actual_distance_km": 22.4,
+        "expected_distance_km": 17.0,
+    },
+    "fare": {
+        "currency": "SGD",
+        "base_fare": 4.00,
+        "per_km_rate": 1.10,
+        "per_min_rate": 0.35,
+        "estimated_fare": 22.50,
+        "actual_fare": 29.00,
+        "toll": 2.00,
+        "surge_multiplier": 1.0,
+        "paid_amount": 29.00,
+        "payment_method": "credit_card",
+    },
+    "claim": {
+        "filed_by": "rider",
+        "reason": "The trip was charged at S$29.00 although the in-app estimate "
+                  "was S$22.50. The driver travelled 22.4 km instead of the "
+                  "suggested 17.0 km route, and no roadworks evidence was provided.",
+        "requested_refund": 6.50,
+        "evidence_notes": [
+            "In-app fare estimate shows S$22.50 before the trip.",
+            "Trip receipt and GPS record show S$29.00 charged over 22.4 km.",
+        ],
+    },
+    "driver_response": {
+        "statement": "I took the expressway route because traffic was building "
+                     "near the airport. The route was moving, but I do not have "
+                     "a screenshot of the traffic alert.",
+        "evidence_notes": [
+            "Driver confirms choosing an alternate route; no traffic screenshot supplied.",
+        ],
+    },
+    "gps_breadcrumbs": [
+        {"lat": 1.3571, "lng": 103.9872, "ts": _ts(100), "speed_kmh": 0.0},
+        {"lat": 1.3400, "lng": 103.9700, "ts": _ts(108), "speed_kmh": 48.0},
+        {"lat": 1.3100, "lng": 103.9400, "ts": _ts(118), "speed_kmh": 62.0},
+        {"lat": 1.2834, "lng": 103.8607, "ts": _ts(135), "speed_kmh": 0.0},
+    ],
+    "chat_log": [
+        {"ts": _ts(90), "sender": "rider", "text": "I'm at Terminal 3 pick-up."},
+        {"ts": _ts(98), "sender": "driver", "text": "I am at the arrival pick-up point."},
+        {"ts": _ts(116), "sender": "rider", "text": "The app showed a shorter route. Why are we going this way?"},
+        {"ts": _ts(117), "sender": "driver", "text": "Traffic was building, this route should be faster."},
+        {"ts": _ts(136), "sender": "rider", "text": "The final fare is higher than the estimate."},
+    ],
+}
+
+
+# ===========================================================================
 # Convenience exports
 # ===========================================================================
-SAMPLE_DISPUTES = [fare_route_dispute, no_show_dispute]
+SAMPLE_DISPUTES = [
+    fare_route_dispute,
+    no_show_dispute,
+    singapore_fare_route_dispute,
+]
 
 
 def get_dispute_by_id(case_id: str):
@@ -294,6 +405,6 @@ if __name__ == "__main__":
     # Quick sanity check — prints a summary so you can verify it runs.
     for d in SAMPLE_DISPUTES:
         print(f"[{d['case_id']}] {d['type']:20s}  "
-              f"claim={d['claim']['requested_refund']} {d['fare']['currency']}  "
+              f"claim={format_money(d['claim']['requested_refund'], d['fare']['currency'])}  "
               f"filed_by={d['claim']['filed_by']}")
     print(f"\nTotal sample disputes: {len(SAMPLE_DISPUTES)}")
